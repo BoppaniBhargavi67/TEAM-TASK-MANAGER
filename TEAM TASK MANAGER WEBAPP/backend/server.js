@@ -39,6 +39,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Team Task Manager API is running' });
 });
 
+const PORT = process.env.PORT || 5000;
+app.get("/", (req, res) => {
+  res.send("Backend Running Successfully");
+});
 // Error handling middleware
 app.use(require('./src/middleware/errorHandler'));
 
@@ -47,10 +51,7 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-const PORT = process.env.PORT || 5000;
-app.get("/", (req, res) => {
-  res.send("Backend Running Successfully");
-});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📦 Environment: ${process.env.NODE_ENV}`);
