@@ -1,0 +1,107 @@
+import { useState, useEffect } from 'react';
+import { usersAPI } from '../api';
+import toast from 'react-hot-toast';
+
+const getInitials = n => n ? n.split(' ').map(c => c[0]).join('').slice(0, 2).toUpperCase() : '?';
+
+export default function Members() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+
+  useEffect(() => { loadUsers(); }, []);
+
+  const loadUsers = async () => {
+    try {
+      const { data } = await usersAPI.getAll();
+      setUsers(data.users);
+    } catch { toast.error('Failed to load members'); }
+    finally { setLoading(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this user? This action cannot be undone.')) return;
+    try {
+      await usersAPI.delete(id);
+      setUsers(u => u.filter(x => x._id !== id));
+      toast.success('User deleted');
+    } catch { toast.error('Failed to delete user'); }
+  };
+
+  const filtered = users.filter(u => {
+    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
+    const matchRole = filter === 'all' || u.role === filter;
+    return matchSearch && matchRole;
+  });
+
+  const admins = users.filter(u => u.role === 'admin').length;
+  const members = users.filter(u => u.role === 'member').length;
+
+  if (loading) return <div className="loading-center"><div className="loading-spinner" /></div>;
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Team Members</h2>
+          <p className="page-subtitle">{users.length} total · {admins} admin{admins !== 1 ? 's' : ''} · {members} member{members !== 1 ? 's' : ''}</p>
+        </div>
+        <div className="page-header-actions">
+          <div className="search-input">
+            <span className="search-icon">🔍</span>
+            <input placeholder="Search members..." value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <select className="filter-select" value={filter} onChange={e => setFilter(e.target.value)}>
+            <option value="all">All Roles</option>
+            <option value="admin">Admins</option>
+            <option value="member">Members</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <div className="stat-card" style={{ '--card-accent': '#6366f1' }}>
+          <div className="stat-icon" style={{ background: 'rgba(99,102,241,0.1)' }}>👥</div>
+          <div className="stat-info"><h3>{users.length}</h3><p>Total Members</p></div>
+        </div>
+        <div className="stat-card" style={{ '--card-accent': '#ef4444' }}>
+          <div className="stat-icon" style={{ background: 'rgba(239,68,68,0.1)' }}>⚡</div>
+          <div className="stat-info"><h3>{admins}</h3><p>Admins</p></div>
+        </div>
+        <div className="stat-card" style={{ '--card-accent': '#10b981' }}>
+          <div className="stat-icon" style={{ background: 'rgba(16,185,129,0.1)' }}>👤</div>
+          <div className="stat-info"><h3>{members}</h3><p>Members</p></div>
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">👥</div>
+          <h3>No members found</h3>
+          <p>No users match your search criteria.</p>
+        </div>
+      ) : (
+        <div className="members-list">
+          {filtered.map(user => (
+            <div key={user._id} className="member-row">
+              <div className="member-row-avatar">{getInitials(user.name)}</div>
+              <div className="member-row-info">
+                <div className="member-row-name">{user.name}</div>
+                <div className="member-row-email">{user.email}</div>
+              </div>
+              <span className={`badge badge-${user.role}`}>{user.role}</span>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 80 }}>
+                Joined {new Date(user.createdAt).toLocaleDateString()}
+              </div>
+              <div className="member-row-actions">
+                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(user._id)}>Remove</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
